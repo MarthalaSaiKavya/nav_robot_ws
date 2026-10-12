@@ -1,0 +1,39 @@
+# =============================================================================
+#  PLANNER: Smac State Lattice   (planner:=smac_lattice)
+# =============================================================================
+#  Searches with a pre-computed set of kinematically feasible motion PRIMITIVES
+#  (a "lattice"). The primitives file below is the one shipped with Nav2 for
+#  DIFFERENTIAL drive robots at 5 cm resolution (our costmap resolution!).
+#  Best choice for NON-circular robots that must squeeze through tight spaces.
+#  Docs: https://docs.nav2.org/configuration/packages/smac/configuring-smac-lattice.html
+# =============================================================================
+planner_server:
+  ros__parameters:
+    GridBased:
+      plugin: "nav2_smac_planner::SmacPlannerLattice"
+      allow_unknown: true
+      tolerance: 0.25
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 5.0
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 3.0
+      reverse_penalty: 2.0
+      change_penalty: 0.05
+      non_straight_penalty: 1.05
+      cost_penalty: 2.0
+      rotation_penalty: 5.0
+      retrospective_penalty: 0.015
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      allow_reverse_expansion: false
+      # The find-pkg-share substitution below is expanded because the launch file loads params with allow_substs
+      lattice_filepath: "$(find-pkg-share nav2_smac_planner)/sample_primitives/5cm_resolution/0.5m_turning_radius/diff/output.json"
+      smooth_path: True
+      smoother:
+        max_iterations: 1000
+        w_smooth: 0.3
+        w_data: 0.2
+        tolerance: 1.0e-10
+        do_refinement: true
+        refinement_num: 2

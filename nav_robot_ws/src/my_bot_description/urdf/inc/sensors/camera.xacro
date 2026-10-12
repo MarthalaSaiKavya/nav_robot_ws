@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<!--
+  Camera mounted ON TOP OF the LiDAR.  This builds the TF chain from the plan:
+
+        base_link -> lidar_link -> camera_link -> camera_optical_link
+
+  Why two camera frames?
+    * camera_link          : ROS body convention   (x forward, y left, z up)
+    * camera_optical_link  : image convention      (z forward, x right, y down)
+    Image pixels are expressed in the OPTICAL frame (REP-103). Getting this wrong
+    makes 3D projections come out rotated by 90 degrees - a classic beginner bug.
+
+  The camera is not needed for SLAM/Nav2. The frames are ALWAYS present (so you can
+  study the TF tree), but the Gazebo sensor is only added when use_camera:=true,
+  because rendering images costs CPU/GPU. It is the hook for the future
+  "semantic world model" (object detection) extension.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="camera_sensor" params="enable_sim:=false">
+
+    <joint name="camera_joint" type="fixed">
+      <parent link="lidar_link"/>
+      <child link="camera_link"/>
+      <origin xyz="${camera_x} 0 ${camera_z}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="camera_link">
+      <visual>
+        <geometry><box size="0.02 0.08 0.03"/></geometry>
+        <material name="camera_white"/>
+      </visual>
+      <collision>
+        <geometry><box size="0.02 0.08 0.03"/></geometry>
+      </collision>
+      <xacro:inertial_box mass="0.05" x="0.02" y="0.08" z="0.03">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </xacro:inertial_box>
+    </link>
+
+    <!-- Optical frame: rotate so z looks forward, x right, y down. -->
+    <joint name="camera_optical_joint" type="fixed">
+      <parent link="camera_link"/>
+      <child link="camera_optical_link"/>
+      <origin xyz="0 0 0" rpy="${-PI/2} 0 ${-PI/2}"/>
+    </joint>
+    <link name="camera_optical_link"/>
+
+    <xacro:if value="${enable_sim}">
+      <gazebo reference="camera_link">
+        <!-- Gazebo cameras look along the +x axis of the link they belong to (camera_link). -->
+        <sensor name="camera" type="camera">
+          <always_on>true</always_on>
+          <visualize>true</visualize>
+          <update_rate>15</update_rate>
+          <topic>camera/image_raw</topic>
+          <gz_frame_id>camera_optical_link</gz_frame_id>
+          <camera>
+            <camera_info_topic>camera/camera_info</camera_info_topic>
+            <horizontal_fov>1.2</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip>
+              <near>0.05</near>
+              <far>15.0</far>
+            </clip>
+          </camera>
+        </sensor>
+      </gazebo>
+    </xacro:if>
+
+  </xacro:macro>
+</robot>

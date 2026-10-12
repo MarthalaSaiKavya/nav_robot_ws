@@ -1,0 +1,12 @@
+# Odometry profile "realistic" (DEFAULT): errors typical of a hobby robot with
+# encoders that was calibrated roughly.
+#   +1.5 % distance error, -3 % rotation error (the wheel separation is a bit off),
+#   small random noise. After a 10 m drive with a few turns, expect 20-50 cm of drift.
+odometry_processor:
+  ros__parameters:
+    mode: integrate
+    linear_scale_error: 0.015
+    angular_scale_error: -0.03
+    linear_noise_std: 0.01
+    angular_noise_std: 0.02
+    angular_bias: 0.0

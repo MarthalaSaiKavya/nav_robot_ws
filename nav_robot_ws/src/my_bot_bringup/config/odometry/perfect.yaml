@@ -1,0 +1,5 @@
+# Odometry profile "perfect": pass the simulator's wheel odometry through unchanged.
+# Even SLAM without loop closure looks great with this - unrealistic, but a good baseline.
+odometry_processor:
+  ros__parameters:
+    mode: passthrough

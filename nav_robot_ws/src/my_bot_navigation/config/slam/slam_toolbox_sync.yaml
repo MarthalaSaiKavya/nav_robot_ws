@@ -1,0 +1,88 @@
+# =============================================================================
+#  slam_toolbox - ONLINE SYNC mapping    (slam_method:=slam_toolbox_sync)
+# =============================================================================
+#  "Sync" = EVERY scan is processed, in order, even if that makes the map lag behind
+#  real time on a slow CPU. More consistent maps, more CPU. ("async" drops scans when
+#  busy.) Based on slam_toolbox's mapper_params_online_sync.yaml (Jazzy),
+#  adapted to this robot. Docs: https://github.com/SteveMacenski/slam_toolbox
+#
+#  What slam_toolbox does, in one breath: it matches every new scan against recent
+#  scans (scan matching) to correct odometry, stores poses + scans in a POSE GRAPH,
+#  and when it recognises a place it has seen before (LOOP CLOSURE) it adds a
+#  constraint and re-optimises the whole graph (Ceres solver) - straightening the map.
+# =============================================================================
+slam_toolbox:
+  ros__parameters:
+    # ---- Solver (graph optimisation) ----
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # ---- ROS interface: frames + topic (MUST match the robot) ----
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_footprint
+    scan_topic: /scan
+    use_map_saver: true          # offers /slam_toolbox/save_map
+    mode: mapping
+
+    debug_logging: false
+    throttle_scans: 1            # use every scan
+    transform_publish_period: 0.02   # publish map->odom at 50 Hz
+    map_update_interval: 2.0     # recompute the /map image every 2 s (default 5 s; faster helps exploration)
+    resolution: 0.05             # 5 cm cells
+    min_laser_range: 0.12
+    max_laser_range: 12.0        # beams longer than this are ignored for the map image
+    minimum_time_interval: 0.3
+    # map->odom is stamped this far INTO THE FUTURE (last scan time + transform_timeout),
+    # so nodes asking for the transform 'now' still find one while SLAM is busy (e.g. a
+    # loop-closure optimisation). Too small -> controller errors 'Lookup would require
+    # extrapolation into the future'. Default 0.2; 0.5 is safer on slower PCs.
+    transform_timeout: 0.5
+    tf_buffer_duration: 30.0
+    stack_size_to_use: 40000000  # large maps need a big stack to serialise
+    enable_interactive_mode: false
+
+    # ---- When is a scan added to the graph? (smaller = more nodes, more CPU) ----
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.3     # metres
+    minimum_travel_heading: 0.5      # radians (slam_toolbox default; with the precise check above a 360° spin adds ~12 scans)
+    # TRUE = a scan is added when the robot moved minimum_travel_distance OR turned
+    # minimum_travel_heading. With the default (false) slam_toolbox only checks DISTANCE,
+    # so spinning in place adds NOTHING to the map (see shouldProcessScan() in
+    # slam_toolbox_common.cpp). Exploration starts with a spin, so we want true.
+    check_min_dist_and_heading_precisely: true
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+
+    # ---- Loop closure ----
+    do_loop_closing: true
+    loop_search_maximum_distance: 3.0
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    # ---- Scan matcher search window ----
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 1.0
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    coarse_angle_resolution: 0.0349
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true
+    min_pass_through: 2
+    occupancy_threshold: 0.1

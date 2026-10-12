@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<!--
+  DRIVE VARIANT A (default):  Gazebo's built-in DiffDrive system plugin.
+
+  How it works:
+    ROS /cmd_vel (geometry_msgs/Twist)
+        -> ros_gz_bridge -> Gazebo topic /cmd_vel
+        -> DiffDrive plugin converts (v, w) into left/right wheel speeds:
+               v_left  = (v - w * wheel_separation / 2) / wheel_radius
+               v_right = (v + w * wheel_separation / 2) / wheel_radius
+        -> physics turns the wheels -> robot moves.
+    The plugin also integrates the wheel rotation into an odometry estimate and
+    publishes it on /wheel/odom_raw  ("raw" = straight from the wheels).
+
+  We deliberately DO NOT bridge the plugin's TF. Instead our odometry_processor
+  node publishes odom -> base_footprint (optionally with realistic drift added),
+  so that exactly ONE node owns that transform no matter which variant you pick.
+
+  Pros: simplest, zero extra ROS packages.
+  Cons: not how real robot drivers are written (see ros2_control variant).
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="drive_gz_plugin">
+    <gazebo>
+      <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
+        <wheel_separation>${wheel_separation}</wheel_separation>
+        <wheel_radius>${wheel_radius}</wheel_radius>
+
+        <max_linear_velocity>${max_linear_velocity}</max_linear_velocity>
+        <min_linear_velocity>${-max_linear_velocity}</min_linear_velocity>
+        <max_angular_velocity>${max_angular_velocity}</max_angular_velocity>
+        <min_angular_velocity>${-max_angular_velocity}</min_angular_velocity>
+        <max_linear_acceleration>${max_linear_acceleration}</max_linear_acceleration>
+        <min_linear_acceleration>${-max_linear_acceleration}</min_linear_acceleration>
+        <max_angular_acceleration>${max_angular_acceleration}</max_angular_acceleration>
+        <min_angular_acceleration>${-max_angular_acceleration}</min_angular_acceleration>
+
+        <topic>/cmd_vel</topic>
+        <odom_topic>/wheel/odom_raw</odom_topic>
+        <tf_topic>/wheel/tf_raw</tf_topic>          <!-- published in Gazebo, intentionally NOT bridged -->
+        <frame_id>odom</frame_id>
+        <child_frame_id>base_footprint</child_frame_id>
+        <odom_publish_frequency>50</odom_publish_frequency>
+      </plugin>
+
+      <!-- Publishes the wheel joint angles so robot_state_publisher can draw spinning wheels. -->
+      <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+        <topic>/joint_states</topic>
+        <joint_name>left_wheel_joint</joint_name>
+        <joint_name>right_wheel_joint</joint_name>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>

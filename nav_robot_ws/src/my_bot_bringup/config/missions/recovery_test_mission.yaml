@@ -1,0 +1,12 @@
+# Phase 6: a single long goal (zone A -> zone B) used together with
+# config/scenarios/hard_block_only.yaml to watch Nav2's recovery behaviours.
+mission:
+  name: recovery_test
+  frame: map
+  start_pose: {x: 1.0, y: -4.2, yaw: 3.14}
+  initial_guess_error: {x: 0.0, y: 0.0, yaw: 0.0}
+  goal_timeout: 180.0
+  retries_per_goal: 1
+  retry_failed_at_end: false
+  goals:
+    - {name: zone_b_northeast, x: 4.3, y: 3.2, yaw: 3.14}

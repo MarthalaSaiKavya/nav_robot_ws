@@ -1,0 +1,11 @@
+# Odometry profile "terrible": wheels slipping on a smooth floor, bad calibration and a
+# drifting heading. Without SLAM / AMCL the robot is lost within metres.
+# Good stress test:  odometry_profile:=terrible  (and try amcl_profile:=many_particles)
+odometry_processor:
+  ros__parameters:
+    mode: integrate
+    linear_scale_error: 0.05
+    angular_scale_error: -0.10
+    linear_noise_std: 0.03
+    angular_noise_std: 0.08
+    angular_bias: 0.02

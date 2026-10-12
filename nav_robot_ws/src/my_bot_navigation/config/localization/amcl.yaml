@@ -1,0 +1,73 @@
+# =============================================================================
+#  AMCL - Adaptive Monte Carlo Localization (nav2_amcl)        (Phase 4)
+# =============================================================================
+#  A particle filter on a KNOWN map (see my_bot_autonomy/learning/particle_filter.py
+#  for a 200-line version of the same algorithm). "Adaptive" = the number of particles
+#  shrinks when the filter is confident (KLD sampling: min_particles..max_particles).
+#
+#  Profiles (amcl_profile:=...) are small files in amcl_profiles/ that OVERRIDE values
+#  here: default | beam_model | many_particles | kidnap_recovery | fast
+#  Docs: https://docs.nav2.org/configuration/packages/configuring-amcl.html
+# =============================================================================
+amcl:
+  ros__parameters:
+    # ---- frames / topics ----
+    base_frame_id: "base_footprint"
+    odom_frame_id: "odom"
+    global_frame_id: "map"
+    scan_topic: scan
+    tf_broadcast: true            # publish map -> odom
+    transform_tolerance: 1.0      # map->odom is future-dated by this much
+
+    # ---- motion model: how much do we distrust odometry? ----
+    # alpha1: rotation noise from rotation       alpha2: rotation noise from translation
+    # alpha3: translation noise from translation alpha4: translation noise from rotation
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2                   # only used by the omni model
+
+    # ---- sensor model: likelihood field (fast, smooth) ----
+    laser_model_type: "likelihood_field"
+    laser_likelihood_max_dist: 2.0
+    laser_max_range: 12.0
+    laser_min_range: 0.12
+    max_beams: 60                 # use 60 of the 360 beams (CPU vs accuracy)
+    z_hit: 0.5
+    z_rand: 0.5
+    z_max: 0.05
+    z_short: 0.05
+    sigma_hit: 0.2
+    lambda_short: 0.1
+    do_beamskip: false
+    beam_skip_distance: 0.5
+    beam_skip_error_threshold: 0.9
+    beam_skip_threshold: 0.3
+
+    # ---- particles ----
+    min_particles: 500
+    max_particles: 2000
+    pf_err: 0.05
+    pf_z: 0.99
+    resample_interval: 1
+
+    # ---- when to update (AMCL only runs after the robot really moved) ----
+    update_min_d: 0.2             # metres
+    update_min_a: 0.2             # radians
+
+    # ---- kidnapped-robot recovery (random particle injection); 0 = off ----
+    recovery_alpha_fast: 0.0
+    recovery_alpha_slow: 0.0
+
+    # ---- initial pose (localization.launch.py can switch set_initial_pose on and fill these) ----
+    set_initial_pose: false
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
+    always_reset_initial_pose: false
+    first_map_only: false
+    save_pose_rate: 0.5

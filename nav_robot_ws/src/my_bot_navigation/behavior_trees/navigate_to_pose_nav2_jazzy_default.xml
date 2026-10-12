@@ -1,0 +1,72 @@
+<!--
+  ============================================================================
+   NAV2 JAZZY DEFAULT tree (bt:=nav2_jazzy_default) - a commented copy of Nav2 Jazzy's
+   navigate_to_pose_w_replanning_and_recovery.xml
+  ============================================================================
+  How to read a behaviour tree (BT):
+    * Every node returns SUCCESS, FAILURE or RUNNING when "ticked".
+    * Sequence / PipelineSequence : run children in order (all must succeed)
+    * Fallback / ReactiveFallback : try children in order until one succeeds
+    * RecoveryNode(retries=N)     : child 1 = the task, child 2 = a recovery.
+                                    If the task fails, run the recovery and try again,
+                                    up to N times, then give up (FAILURE -> goal ABORTED).
+    * RateController(hz)          : tick its child at most hz times per second
+    * {blackboard_variables}      : shared memory between nodes ({goal}, {path} ...)
+
+  What this tree does:
+    1. Every second (1 Hz) re-plan a path to the goal  -> reacts to new obstacles
+    2. Follow the latest path with the controller
+    3. If planning or following fails AND the error code says a recovery could help
+       (WouldAPlannerRecoveryHelp / WouldAControllerRecoveryHelp), clear the costmaps and
+       cycle through Spin -> Wait -> BackUp, retrying up to 6 times.
+  Difference to this project's bt:=default: the error-code GATE. Recoveries only run for
+  "recoverable" errors. NO_VALID_PATH (e.g. the Phase 6 cage) passes the gate, so there the
+  two trees behave alike. Errors such as START_OCCUPIED / GOAL_OCCUPIED, or a planner halted
+  before it reported any code, do NOT pass -> the tree ABORTS within about a second without
+  spinning/waiting/backing up (we saw this in Phase 7 when the surprise box landed on the
+  path). Compare both trees in Phase 6 and Phase 7!
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+        <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+            <Sequence>
+              <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+              <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
+          <Sequence>
+            <WouldAControllerRecoveryHelp error_code="{follow_path_error_code}"/>
+            <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+          </Sequence>
+        </RecoveryNode>
+      </PipelineSequence>
+      <Sequence>
+        <Fallback>
+          <WouldAControllerRecoveryHelp error_code="{follow_path_error_code}"/>
+          <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+        </Fallback>
+        <ReactiveFallback name="RecoveryFallback">
+          <GoalUpdated/>
+          <RoundRobin name="RecoveryActions">
+            <Sequence name="ClearingActions">
+              <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+              <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+            <Spin spin_dist="1.57" error_code_id="{spin_error_code}"/>
+            <Wait wait_duration="5.0"/>
+            <BackUp backup_dist="0.30" backup_speed="0.15" error_code_id="{backup_code_id}"/>
+          </RoundRobin>
+        </ReactiveFallback>
+      </Sequence>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

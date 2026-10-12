@@ -1,0 +1,30 @@
+# =============================================================================
+#  explore_lite (m-explore-ros2) parameters   (explorer:=explore_lite)
+# =============================================================================
+#  The community's well-known frontier explorer (port of ROS 1 explore_lite).
+#  NOT released as a Jazzy binary - build it from source once:
+#     cd ~/nav_robot_ws/src && git clone https://github.com/robo-friends/m-explore-ros2.git
+#     cd ~/nav_robot_ws && colcon build --symlink-install --packages-select explore_lite explore_lite_msgs
+#  It scores frontiers with  cost = potential_scale * distance - gain_scale * size
+#  (our frontier_explorer's "utility" strategy is the same formula, in Python).
+#  explore_lite stops exploring when it runs out of frontiers, but the process never
+#  EXITS and saves nothing. So our frontier_explorer runs alongside in strategy:=external
+#  mode: when it sees no frontiers left (or the robot has not moved for 60 s) it stops
+#  explore_lite (/explore/resume false), returns home and saves the map.
+#  explore_lite only starts after the wait_for_nav2 "gate" (Nav2 active + one spin), see
+#  stage_explore.launch.py.
+# =============================================================================
+explore_node:
+  ros__parameters:
+    robot_base_frame: base_footprint
+    return_to_init: false
+    costmap_topic: map
+    costmap_updates_topic: map_updates
+    visualize: true
+    planner_frequency: 0.33
+    progress_timeout: 30.0
+    potential_scale: 3.0
+    orientation_scale: 0.0
+    gain_scale: 1.0
+    transform_tolerance: 0.3
+    min_frontier_size: 0.5

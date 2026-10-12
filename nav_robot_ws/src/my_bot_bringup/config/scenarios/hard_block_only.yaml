@@ -1,0 +1,27 @@
+# Phase 6 test: watch the recovery behaviours in isolation.
+#   ros2 launch my_bot_bringup phase6_recovery.launch.py bt:=<tree>
+# A cage of 4 walls closes around the robot 2 s after goal 0 starts (path fully occluded)
+# and opens again 32 s after the goal started ("temporary block").
+#
+# What we measured with sim:=lite (one run each - your numbers will differ a bit):
+#   bt:=default            18 s / 16 recoveries -> ABORTED; mission runner retries; the cage opens
+#                          during the retry -> SUCCEEDED on attempt 2 (total ~52 s)
+#   bt:=patient            waits first, retries 10x -> still trying when the cage opens
+#                          -> SUCCEEDED on attempt 1 (60 s)
+#   bt:=no_recovery        3 s, 0 recoveries -> ABORTED, retry aborts at once -> mission FAILED
+#                          (that is exactly what recoveries buy you)
+#   bt:=nav2_jazzy_default 20 s / 15 recoveries -> ABORTED, then SUCCEEDED on attempt 2.
+#                          Here the planner's error code ("no valid path") DID pass the
+#                          WouldAPlannerRecoveryHelp gate. With other error codes (e.g. goal or
+#                          start inside an obstacle) the gate skips recoveries and it aborts in
+#                          about a second - you can see that in Phase 7 with the surprise box.
+# Change the delay of open_cage (e.g. 15 s or 90 s) and see which trees still make it.
+scenario:
+  name: hard_block_only
+  events:
+    - name: cage
+      trigger: {type: goal_started, goal: 0, delay: 2.0}
+      action: {type: spawn_cage, inner_radius: 0.75, thickness: 0.25, size: [0.25, 0.25, 0.8]}
+    - name: open_cage
+      trigger: {type: goal_started, goal: 0, delay: 32.0}
+      action: {type: remove, names: [cage]}

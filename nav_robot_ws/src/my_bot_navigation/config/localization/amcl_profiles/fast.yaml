@@ -1,0 +1,9 @@
+# AMCL profile "fast": few particles, few beams, updates less often.
+# For slow computers; converges more slowly and can lose track in symmetric areas.
+amcl:
+  ros__parameters:
+    min_particles: 200
+    max_particles: 800
+    max_beams: 30
+    update_min_d: 0.25
+    update_min_a: 0.3

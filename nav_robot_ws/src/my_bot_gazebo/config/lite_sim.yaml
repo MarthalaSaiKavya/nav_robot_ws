@@ -1,0 +1,30 @@
+# =============================================================================
+#  Parameters of the lightweight Python simulator (sim:=lite)
+# =============================================================================
+#  The robot numbers MUST match my_bot_description/urdf/inc/properties.xacro.
+#  world_file and the spawn pose are set by sim.launch.py.
+# =============================================================================
+lite_sim:
+  ros__parameters:
+    robot_name: my_bot
+    robot_radius: 0.23            # collision circle [m] (chassis corners are ~0.234 m away)
+    wheel_separation: 0.35
+    wheel_radius: 0.05
+    max_linear_velocity: 0.6
+    max_angular_velocity: 2.5
+    max_linear_acceleration: 1.5
+    max_angular_acceleration: 4.0
+    cmd_vel_timeout: 0.5          # stop if /cmd_vel goes quiet
+
+    lidar_offset_x: 0.05          # lidar_link is 5 cm in front of base_link
+    lidar_height: 0.155           # scan plane above the floor
+    lidar_samples: 360
+    lidar_range_min: 0.12
+    lidar_range_max: 12.0
+
+    physics_rate: 100.0           # Hz - also the /clock publish rate
+    scan_rate: 10.0
+    odom_rate: 50.0
+    real_time_factor: 1.0         # >1 = run faster than real time (if your CPU keeps up)
+    gyro_noise_std: 0.002
+    random_seed: 0                # 0 = different noise every run

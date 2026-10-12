@@ -1,0 +1,17 @@
+# =============================================================================
+#  PLANNER: Theta*   (planner:=theta_star)
+# =============================================================================
+#  "Any-angle" A*: whenever two cells can SEE each other (line of sight through free
+#  space) it connects them directly. Paths have long straight segments instead of
+#  45-degree zig-zags. Good for open spaces; paths pass closer to corners.
+#  Docs: https://docs.nav2.org/configuration/packages/configuring-thetastar.html
+# =============================================================================
+planner_server:
+  ros__parameters:
+    GridBased:
+      plugin: "nav2_theta_star_planner::ThetaStarPlanner"
+      how_many_corners: 8
+      w_euc_cost: 1.0
+      w_traversal_cost: 2.0       # higher = stay further from obstacles
+      allow_unknown: true
+      use_final_approach_orientation: false

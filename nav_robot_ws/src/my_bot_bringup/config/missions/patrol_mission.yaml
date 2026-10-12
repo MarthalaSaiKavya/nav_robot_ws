@@ -1,0 +1,18 @@
+# A patrol through both zones and both doorways (no deliberately blocked goals).
+# Use it to compare mission methods:
+#   ... mission_method:=follow_waypoints | through_poses | navigate_to_pose | raw_action
+mission:
+  name: patrol_mission
+  frame: map
+  start_pose: {x: 1.0, y: -4.2, yaw: 3.14}
+  initial_guess_error: {x: 0.3, y: 0.0, yaw: -0.2}
+  goal_timeout: 120.0
+  retries_per_goal: 1
+  retry_failed_at_end: true
+  goals:
+    - {name: door_west_south, x: -2.0, y:  0.6, yaw: 1.57}
+    - {name: door_west_north, x: -2.0, y:  2.4, yaw: 1.57}
+    - {name: north_middle,    x:  0.0, y:  4.3, yaw: 0.0}
+    - {name: door_east_north, x:  3.0, y:  2.4, yaw: -1.57}
+    - {name: door_east_south, x:  3.0, y:  0.6, yaw: -1.57}
+    - {name: south_west,      x: -4.2, y: -4.2, yaw: 3.14}

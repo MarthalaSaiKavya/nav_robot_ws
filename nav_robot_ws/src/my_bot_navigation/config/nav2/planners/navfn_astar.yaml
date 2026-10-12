@@ -1,0 +1,14 @@
+# =============================================================================
+#  PLANNER: NavFn with A*   (planner:=navfn_astar)
+# =============================================================================
+#  Same NavFn, but the search is GUIDED by the straight-line distance to the goal
+#  (heuristic) -> expands far fewer cells than Dijkstra, same path quality here.
+# =============================================================================
+planner_server:
+  ros__parameters:
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      tolerance: 0.5
+      use_astar: true
+      allow_unknown: true
+      use_final_approach_orientation: false

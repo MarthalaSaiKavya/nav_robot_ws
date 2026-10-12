@@ -1,0 +1,259 @@
+# =============================================================================
+#  Nav2 BASE parameters (everything except the planner and controller ALGORITHMS)
+# =============================================================================
+#  navigation.launch.py loads, for every Nav2 node, these files in order:
+#      1. this file
+#      2. planners/<planner>.yaml        (planner:=navfn_dijkstra | navfn_astar | smac_2d | ...)
+#      3. controllers/<controller>.yaml  (controller:=dwb | rpp | mppi | graceful | rotation_shim)
+#  Later files override earlier ones, so swapping an algorithm = swapping one small file.
+#
+#  How Nav2 fits together (all of these are separate ROS 2 lifecycle nodes):
+#
+#     goal --> bt_navigator (behaviour tree: "plan, follow, recover")
+#                 |-- ComputePathToPose --> planner_server  (uses global_costmap)
+#                 |-- SmoothPath        --> smoother_server
+#                 |-- FollowPath        --> controller_server (uses local_costmap) --> cmd_vel_nav
+#                 |-- Spin/BackUp/Wait  --> behavior_server                        --> cmd_vel_nav
+#     cmd_vel_nav --> velocity_smoother --> cmd_vel_smoothed --> collision_monitor --> /cmd_vel --> robot
+#
+#  Robot numbers used below (from my_bot_description/urdf/inc/properties.xacro):
+#     circumscribed radius ~0.234 m  -> robot_radius 0.25 (a little margin)
+#     we drive at most 0.4 m/s and 1.5 rad/s here (the drive can do 0.6 / 2.5)
+#  Docs: https://docs.nav2.org/configuration/index.html
+# =============================================================================
+
+bt_navigator:
+  ros__parameters:
+    global_frame: map
+    robot_base_frame: base_footprint
+    odom_topic: /odom
+    bt_loop_duration: 10
+    # How long (ms) a BT action node waits for a server to ACCEPT a request. Nav2's default is
+    # 20 ms; on slow PCs / VMs that causes random "Timed out while waiting for action server to
+    # acknowledge goal request" failures, so we allow 500 ms.
+    default_server_timeout: 500
+    wait_for_service_timeout: 1000
+    action_server_result_timeout: 900.0
+    navigators: ["navigate_to_pose", "navigate_through_poses"]
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+    # The behaviour tree XML is chosen in navigation.launch.py (bt:=default | nav2_jazzy_default | patient | ...)
+    error_code_names:
+      - compute_path_error_code
+      - follow_path_error_code
+
+controller_server:
+  ros__parameters:
+    controller_frequency: 20.0
+    costmap_update_timeout: 0.30
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    # How long (s) the controller may keep failing (e.g. RPP "collision ahead!" because a new box
+    # sits on the path) before FollowPath fails. 2 s > 1 s replanning period, so the planner gets
+    # a chance to route around the new obstacle before the behaviour tree starts recoveries.
+    failure_tolerance: 2.0
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]          # its parameters live in controllers/<controller>.yaml
+    use_realtime_priority: false
+
+    # "Are we making progress?" - if the robot moved less than 0.5 m in 10 s the
+    # controller FAILS, which makes the behaviour tree start its recoveries.
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+    # "Are we there?" - within 25 cm and ~14 degrees of the goal.
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.25
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 10.0          # only used to warn when planning is slower than this
+    planner_plugins: ["GridBased"]              # its parameters live in planners/<planner>.yaml
+    costmap_update_timeout: 1.0
+
+smoother_server:
+  ros__parameters:
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
+
+behavior_server:
+  ros__parameters:
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+    # The RECOVERY behaviours used by the behaviour tree (Phase 6):
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors::AssistedTeleop"
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_footprint
+    transform_tolerance: 0.1
+    simulate_ahead_time: 2.0       # spin/backup check this far ahead for collisions
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
+
+waypoint_follower:
+  ros__parameters:
+    loop_rate: 20
+    stop_on_failure: false         # skip a failed waypoint and continue with the next one
+    action_server_result_timeout: 900.0
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: True
+      waypoint_pause_duration: 500   # ms
+
+velocity_smoother:
+  ros__parameters:
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.4, 0.0, 1.5]       # [vx, vy, wz]
+    min_velocity: [-0.3, 0.0, -1.5]
+    max_accel: [1.2, 0.0, 3.0]
+    max_decel: [-1.5, 0.0, -3.2]
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
+
+# Last line of defence: independent of the costmaps, looks at the raw scan and slows /
+# stops the robot if a collision is imminent (use_collision_monitor:=false to remove it).
+collision_monitor:
+  ros__parameters:
+    base_frame_id: "base_footprint"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "cmd_vel_smoothed"
+    cmd_vel_out_topic: "cmd_vel"
+    state_topic: "collision_monitor_state"
+    transform_tolerance: 0.2
+    source_timeout: 1.0
+    base_shift_correction: False      # True = compensate robot motion since the scan was taken (needs exact TF timing)
+    stop_pub_timeout: 2.0
+    polygons: ["FootprintApproach"]
+    FootprintApproach:
+      type: "polygon"
+      action_type: "approach"       # slow down so that a collision is >= 1.2 s away
+      footprint_topic: "/local_costmap/published_footprint"
+      time_before_collision: 1.2
+      simulation_time_step: 0.1
+      min_points: 6
+      visualize: False
+      enabled: True
+    observation_sources: ["scan"]
+    scan:
+      type: "scan"
+      topic: "scan"
+      min_height: 0.05
+      max_height: 2.0
+      enabled: True
+
+# ------------------------------------------------------------------ COSTMAPS
+# A costmap = the map + live sensor obstacles + an "inflation" halo, as cost values 0..254.
+#   254 LETHAL     : an obstacle cell
+#   253 INSCRIBED  : robot centre here = robot body touches an obstacle
+#   252..1         : decays with distance (cost_scaling_factor) up to inflation_radius
+#   0  FREE
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      global_frame: odom             # local costmap moves with the robot, in the smooth odom frame
+      robot_base_frame: base_footprint
+      rolling_window: true
+      width: 4                       # metres
+      height: 4
+      resolution: 0.05
+      robot_radius: 0.25
+      # (non-circular alternative:) footprint: "[[0.19, 0.20], [0.19, -0.20], [-0.19, -0.20], [-0.19, 0.20]]"
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: True             # ray-trace free space (removes obstacles that left)
+          marking: True              # mark beam endpoints as obstacles
+          data_type: "LaserScan"
+          raytrace_max_range: 4.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 3.5
+          obstacle_min_range: 0.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0     # higher = cost falls off faster = robot hugs obstacles more
+        inflation_radius: 0.55
+      always_send_full_costmap: True
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_footprint
+      robot_radius: 0.25
+      resolution: 0.05
+      track_unknown_space: true      # keep "unknown" distinct (needed for exploration)
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      static_layer:                  # the saved map (or the live SLAM map)
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+      obstacle_layer:                # live LiDAR obstacles that are NOT in the map
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 4.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 3.5
+          obstacle_min_range: 0.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55
+      always_send_full_costmap: True
+
+# ------------------------------------------------------------------ MAP SERVER / SAVER
+map_server:
+  ros__parameters:
+    yaml_filename: ""                # set by localization.launch.py (map:=...)
+
+map_saver:
+  ros__parameters:
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65
+    map_subscribe_transient_local: True

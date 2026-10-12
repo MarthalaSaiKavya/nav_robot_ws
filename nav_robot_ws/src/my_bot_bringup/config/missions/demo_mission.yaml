@@ -1,0 +1,49 @@
+# =============================================================================
+#  DEMO MISSION - the queued multi-goal mission of the deliverable (Phase 7/9)
+# =============================================================================
+#  Coordinates are in the MAP frame (= world frame in this project, room centre = 0,0).
+#  Map of the room (y up):
+#
+#        y=5  +-------------------------------------------+
+#             |  [table_b]         (pillar)     [shelf]   |
+#        G3 ->|*  zone B (north)                        * |<- G2
+#             |                                           |
+#      y=1.5  |=======  door_W  ===========  door_E  =====|   partition with 2 doorways
+#             |                                           |
+#             |            zone A (south)              *  |<- G1
+#             |                      (origin)  [L-wall]   |
+#             |  [crate]                                  |
+#        G0 ->|*            (pillar)        S             |   S = mission start
+#        y=-5 +-------------------------------------------+
+#            x=-5                                       x=5
+#
+#  Together with config/scenarios/demo_scenario.yaml this exercises EVERYTHING:
+#   G0 -> G1   a SURPRISE box appears on the planned path   -> local avoidance
+#   G1 -> G2   the east doorway gets BLOCKED as we approach -> global re-planning via door_W
+#   G2 -> G3   a CAGE closes around the robot (path fully occluded) -> recovery behaviours
+#              (clear costmaps, spin, wait, back up) -> Nav2 gives up -> the cage is removed
+#              -> the goal is retried and succeeds
+#   G3 -> G4   back home through the west doorway
+# =============================================================================
+mission:
+  name: demo_mission
+  frame: map
+
+  # Where the robot REALLY starts (the supervisor teleports it here before stage 2;
+  # phase7 launch spawns it here). Must be free space.
+  start_pose: {x: 1.0, y: -4.2, yaw: 3.14}
+
+  # AMCL gets a deliberately ROUGH initial guess = start_pose + this error.
+  # (35 cm, 25 cm and ~14 degrees off - AMCL must fix it.)
+  initial_guess_error: {x: 0.35, y: -0.25, yaw: 0.25}
+
+  goal_timeout: 150.0          # seconds per attempt
+  retries_per_goal: 1          # immediately retry a failed goal once
+  retry_failed_at_end: true    # and once more at the very end
+
+  goals:
+    - {name: zone_a_southwest, x: -4.2, y: -4.2, yaw: 0.0}
+    - {name: zone_a_east,      x:  4.2, y: -0.5, yaw: 1.57}
+    - {name: zone_b_northeast, x:  4.3, y:  3.2, yaw: 3.14}
+    - {name: zone_b_west,      x: -4.3, y:  2.4, yaw: -1.57, timeout: 120.0}
+    - {name: home,             x:  0.0, y: -0.5, yaw: 0.0}

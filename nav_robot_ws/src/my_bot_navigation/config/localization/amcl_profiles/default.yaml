@@ -1,0 +1,5 @@
+# AMCL profile "default": no real overrides - uses config/localization/amcl.yaml as is.
+# (A parameter file must contain at least one parameter, so we repeat a base value.)
+amcl:
+  ros__parameters:
+    save_pose_rate: 0.5

@@ -1,0 +1,11 @@
+# AMCL profile "kidnap_recovery": augmented MCL.
+# AMCL tracks a short-term (fast) and long-term (slow) average of how well particles
+# match the scan. When the short-term average drops (robot was "kidnapped" / teleported,
+# or the initial guess is very wrong) it injects RANDOM particles over the map.
+# Try: teleport the robot with a wrong initial pose and watch it recover.
+amcl:
+  ros__parameters:
+    recovery_alpha_slow: 0.001
+    recovery_alpha_fast: 0.1
+    min_particles: 1000
+    max_particles: 5000

@@ -1,0 +1,47 @@
+# =============================================================================
+#  robot_localization EKF - fuse wheel odometry + IMU gyro   (use_ekf:=true)
+# =============================================================================
+#  Sensor fusion in its most common form. Wheels are good at measuring forward speed
+#  but bad at rotation (slip, wrong wheel separation). A gyro measures rotation rate
+#  directly. The Extended Kalman Filter combines both, weighting each by its
+#  covariance, and publishes a better odom -> base_footprint (+ /odometry/filtered,
+#  remapped to /odom by the launch file).
+#
+#  The *_config arrays select WHICH quantities of each source are fused:
+#       [x,     y,     z,
+#        roll,  pitch, yaw,
+#        vx,    vy,    vz,
+#        vroll, vpitch, vyaw,
+#        ax,    ay,    az]
+#  Rule of thumb: fuse VELOCITIES from odometry, not positions (positions drift and
+#  would "fight" the IMU), and the yaw RATE from the IMU.
+#  Based on the Nav2 "Smoothing Odometry using Robot Localization" guide.
+#  Install: sudo apt install ros-jazzy-robot-localization
+# =============================================================================
+ekf_filter_node:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true              # ignore z, roll, pitch (we drive on a flat floor)
+    publish_tf: true              # the EKF now owns odom -> base_footprint
+    publish_acceleration: false
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_footprint
+    world_frame: odom
+
+    odom0: /wheel/odom            # from odometry_processor (publish_tf:=false in this mode)
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+    odom0_differential: false
+
+    imu0: /imu
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_remove_gravitational_acceleration: true

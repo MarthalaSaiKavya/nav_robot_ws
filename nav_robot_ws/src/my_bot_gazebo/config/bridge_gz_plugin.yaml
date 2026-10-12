@@ -1,0 +1,86 @@
+# =============================================================================
+#  ros_gz_bridge configuration for drive:=gz_plugin (the default)
+# =============================================================================
+#  Gazebo and ROS 2 are two separate programs with their own message systems
+#  (gz-transport vs DDS). The bridge copies messages between them.
+#
+#  direction:
+#    GZ_TO_ROS  - sensor data flowing out of the simulator
+#    ROS_TO_GZ  - commands flowing into the simulator
+#
+#  Check that everything arrives:
+#     ros2 topic hz /scan          (~10 Hz)
+#     ros2 topic hz /wheel/odom_raw (~50 Hz)
+#     gz topic -l                  (list Gazebo-side topics)
+# =============================================================================
+
+# Simulation clock. Every ROS node runs with use_sim_time:=true and reads this,
+# so "time" pauses when Gazebo pauses and runs slower if Gazebo can't keep up.
+- topic_name: "/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS
+
+# 360 degree LiDAR
+- topic_name: "/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+
+# IMU (used only by the optional EKF)
+- topic_name: "/imu"
+  ros_type_name: "sensor_msgs/msg/Imu"
+  gz_type_name: "gz.msgs.IMU"
+  direction: GZ_TO_ROS
+
+# Raw wheel odometry from the DiffDrive plugin (processed by odometry_processor)
+- topic_name: "/wheel/odom_raw"
+  ros_type_name: "nav_msgs/msg/Odometry"
+  gz_type_name: "gz.msgs.Odometry"
+  direction: GZ_TO_ROS
+
+# Wheel joint angles -> robot_state_publisher -> wheel TFs
+- topic_name: "/joint_states"
+  ros_type_name: "sensor_msgs/msg/JointState"
+  gz_type_name: "gz.msgs.Model"
+  direction: GZ_TO_ROS
+
+# Velocity commands from Nav2 / teleop into the DiffDrive plugin
+- topic_name: "/cmd_vel"
+  ros_type_name: "geometry_msgs/msg/Twist"
+  gz_type_name: "gz.msgs.Twist"
+  direction: ROS_TO_GZ
+
+# Simulation-only ground truth (for evaluation, never for navigation)
+- topic_name: "/ground_truth/odom"
+  ros_type_name: "nav_msgs/msg/Odometry"
+  gz_type_name: "gz.msgs.Odometry"
+  direction: GZ_TO_ROS
+
+# Camera (only produces data when the robot was built with use_camera:=true).
+# lazy: true -> the bridge only subscribes in Gazebo when someone listens in ROS.
+- topic_name: "/camera/image_raw"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+  lazy: true
+- topic_name: "/camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+  lazy: true
+
+# --- SERVICES: let ROS nodes change the world (scenario obstacles, teleport) ---
+# These names include the world name from the SDF: <world name="nav_room">.
+- service_name: "/world/nav_room/create"
+  ros_type_name: "ros_gz_interfaces/srv/SpawnEntity"
+  gz_req_type_name: "gz.msgs.EntityFactory"
+  gz_rep_type_name: "gz.msgs.Boolean"
+- service_name: "/world/nav_room/remove"
+  ros_type_name: "ros_gz_interfaces/srv/DeleteEntity"
+  gz_req_type_name: "gz.msgs.Entity"
+  gz_rep_type_name: "gz.msgs.Boolean"
+- service_name: "/world/nav_room/set_pose"
+  ros_type_name: "ros_gz_interfaces/srv/SetEntityPose"
+  gz_req_type_name: "gz.msgs.Pose"
+  gz_rep_type_name: "gz.msgs.Boolean"

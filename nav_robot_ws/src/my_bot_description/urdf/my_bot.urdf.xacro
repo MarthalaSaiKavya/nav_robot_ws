@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================================
+   my_bot : the top-level robot description.  START READING HERE.
+  ============================================================================
+
+  This file only ASSEMBLES pieces. Each piece is a small, documented file in inc/:
+
+     inc/properties.xacro        - every dimension (single source of truth)
+     inc/inertial_macros.xacro   - mass/inertia formulas
+     inc/materials.xacro         - colours
+     inc/base.xacro              - base_footprint, base_link, chassis, wheels, casters
+     inc/sensors/lidar.xacro     - 360 deg LiDAR      (base_link -> lidar_link)
+     inc/sensors/imu.xacro       - IMU                (base_link -> imu_link)
+     inc/sensors/camera.xacro    - camera ON the lidar (lidar_link -> camera_link -> camera_optical_link)
+     inc/drive_gz_plugin.xacro   - drive variant A: Gazebo DiffDrive plugin
+     inc/drive_ros2_control.xacro- drive variant B: ros2_control diff_drive_controller
+     inc/ground_truth.xacro      - simulation-only true pose (for measuring errors)
+
+  xacro ARGUMENTS (pass them like:  xacro my_bot.urdf.xacro drive:=ros2_control):
+     drive          gz_plugin | ros2_control       (default gz_plugin)
+     use_camera     true | false                   (simulate the camera sensor?)
+     lidar_noise    stddev in metres               (default 0.01)
+     sim_mode       gazebo | lite | none           (none = RViz only, no gazebo tags needed)
+
+  Try it:   ros2 run xacro xacro $(ros2 pkg prefix my_bot_description)/share/my_bot_description/urdf/my_bot.urdf.xacro
+-->
+<robot name="my_bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="drive" default="gz_plugin"/>
+  <xacro:arg name="use_camera" default="false"/>
+  <xacro:arg name="lidar_noise" default="0.01"/>
+  <xacro:arg name="sim_mode" default="gazebo"/>
+
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/properties.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/inertial_macros.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/materials.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/base.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/sensors/lidar.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/sensors/imu.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/sensors/camera.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/drive_gz_plugin.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/drive_ros2_control.xacro"/>
+  <xacro:include filename="$(find my_bot_description)/urdf/inc/ground_truth.xacro"/>
+
+  <!-- Sensors (the links always exist so the TF tree is identical in every mode) -->
+  <xacro:lidar_sensor noise_stddev="$(arg lidar_noise)"/>
+  <xacro:imu_sensor/>
+  <xacro:camera_sensor enable_sim="$(arg use_camera)"/>
+
+  <!-- Gazebo-only parts: how the wheels are driven + the ground-truth publisher -->
+  <xacro:if value="${'$(arg sim_mode)' == 'gazebo'}">
+    <xacro:if value="${'$(arg drive)' == 'gz_plugin'}">
+      <xacro:drive_gz_plugin/>
+    </xacro:if>
+    <xacro:if value="${'$(arg drive)' == 'ros2_control'}">
+      <xacro:drive_ros2_control/>
+    </xacro:if>
+    <xacro:ground_truth/>
+  </xacro:if>
+
+</robot>

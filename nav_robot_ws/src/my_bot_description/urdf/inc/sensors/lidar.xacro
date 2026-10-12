@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<!--
+  360 degree 2D LiDAR (think RPLidar A1/A2 or LDS-01).
+
+  TF:  base_link -> lidar_link   (fixed, 5 cm forward, ~10 cm up)
+
+  The <gazebo reference="lidar_link"> block is IGNORED by RViz/robot_state_publisher.
+  Only Gazebo reads it, and turns it into a simulated sensor that publishes
+  gz.msgs.LaserScan on the Gazebo topic "scan". The ros_gz_bridge then converts it
+  to a ROS sensor_msgs/LaserScan on /scan.
+
+  IMPORTANT: <gz_frame_id> sets header.frame_id of every scan. It MUST match the
+  link name, otherwise TF cannot place the scan points in the world.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="lidar_sensor" params="noise_stddev:=0.01">
+
+    <joint name="lidar_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="lidar_link"/>
+      <origin xyz="${lidar_x} 0 ${lidar_z}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="lidar_link">
+      <visual>
+        <geometry><cylinder radius="${lidar_radius}" length="${lidar_length}"/></geometry>
+        <material name="lidar_red"/>
+      </visual>
+      <collision>
+        <geometry><cylinder radius="${lidar_radius}" length="${lidar_length}"/></geometry>
+      </collision>
+      <xacro:inertial_cylinder mass="${lidar_mass}" length="${lidar_length}" radius="${lidar_radius}">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </xacro:inertial_cylinder>
+    </link>
+
+    <gazebo reference="lidar_link">
+      <!-- gpu_lidar = ray-casting done by the rendering engine (ogre2).
+           On a VM without a GPU, export LIBGL_ALWAYS_SOFTWARE=1 (see README) or use sim:=lite. -->
+      <sensor name="lidar" type="gpu_lidar">
+        <pose>0 0 0 0 0 0</pose>
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>${lidar_rate}</update_rate>
+        <topic>scan</topic>
+        <gz_frame_id>lidar_link</gz_frame_id>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${lidar_samples}</samples>
+              <resolution>1</resolution>
+              <!-- -180deg .. +179deg : 360 rays, 1 deg apart, no duplicated ray at +-180 -->
+              <min_angle>${-PI}</min_angle>
+              <max_angle>${PI - 2*PI/lidar_samples}</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>${lidar_min_range}</min>
+            <max>${lidar_max_range}</max>
+            <resolution>0.01</resolution>
+          </range>
+          <!-- Real LiDARs are noisy (~1 cm). Noise makes SLAM/AMCL tuning realistic. -->
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>${noise_stddev}</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </gazebo>
+
+  </xacro:macro>
+</robot>

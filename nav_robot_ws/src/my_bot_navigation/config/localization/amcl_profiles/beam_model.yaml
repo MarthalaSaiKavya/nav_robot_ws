@@ -1,0 +1,13 @@
+# AMCL profile "beam_model": the older BEAM sensor model.
+# Ray-casts every beam in the map and compares expected vs measured range
+# (models hits, short readings from unexpected obstacles, max-range misses, noise).
+# More physically "correct", slower, and more sensitive to small map errors.
+# Compare convergence time and CPU with the default likelihood_field model.
+amcl:
+  ros__parameters:
+    laser_model_type: "beam"
+    z_hit: 0.8
+    z_short: 0.1
+    z_max: 0.05
+    z_rand: 0.05
+    lambda_short: 0.1

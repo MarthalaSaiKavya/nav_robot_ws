@@ -1,0 +1,16 @@
+# =============================================================================
+#  PLANNER: NavFn with DIJKSTRA   (planner:=navfn_dijkstra, the default)
+# =============================================================================
+#  The classic ROS planner. Expands a "wavefront" of cost from the goal over the
+#  whole costmap, then follows the gradient back. Optimal on the grid, robust,
+#  but explores in every direction (slow on huge maps) and assumes a CIRCULAR robot.
+#  Compare with my_bot_autonomy/learning/grid_planners.py (algorithm:=dijkstra).
+# =============================================================================
+planner_server:
+  ros__parameters:
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      tolerance: 0.5              # if the goal is blocked, accept a pose this close
+      use_astar: false
+      allow_unknown: true         # plan through unknown space (needed while exploring)
+      use_final_approach_orientation: false

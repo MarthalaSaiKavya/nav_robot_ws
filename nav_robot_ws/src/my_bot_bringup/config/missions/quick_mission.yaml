@@ -1,0 +1,15 @@
+# A short 3-goal mission that stays in zone A (south). Good for fast iterations
+# while tuning (e.g. comparing controllers):
+#   ros2 launch my_bot_bringup phase7_mission.launch.py mission_file:=quick_mission.yaml scenario_file:=none
+mission:
+  name: quick_mission
+  frame: map
+  start_pose: {x: 1.0, y: -4.2, yaw: 3.14}
+  initial_guess_error: {x: 0.2, y: 0.2, yaw: 0.1}
+  goal_timeout: 90.0
+  retries_per_goal: 1
+  retry_failed_at_end: false
+  goals:
+    - {name: southwest, x: -4.2, y: -4.2, yaw: 0.0}
+    - {name: centre,    x: -1.0, y: -0.3, yaw: 1.57}
+    - {name: east,      x:  4.2, y: -0.5, yaw: 3.14}

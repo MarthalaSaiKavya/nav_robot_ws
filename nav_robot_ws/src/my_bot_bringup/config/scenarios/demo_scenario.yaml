@@ -1,0 +1,38 @@
+# =============================================================================
+#  DEMO SCENARIO - things that happen to the robot during demo_mission.yaml
+# =============================================================================
+#  Goal indices are 0-based (goal 1 = zone_a_east). See scenario_director.py for
+#  all trigger and action types. Spawned objects are orange in Gazebo / RViz.
+# =============================================================================
+scenario:
+  name: demo_surprise_reroute_hardblock
+  events:
+    # 1) UNKNOWN OBSTACLE: 4 s after the robot starts driving to goal 1, a box appears on
+    #    its planned path, 1.6 m ahead. It is not in the saved map -> only the LiDAR sees it
+    #    -> local costmap marks it -> controller/planner steer around it.
+    - name: surprise_box
+      trigger: {type: goal_started, goal: 1, delay: 4.0}
+      action:
+        type: spawn_on_path
+        distance_ahead: 1.6
+        size: [0.5, 0.5, 0.6]
+        fallback: {x: 1.0, y: -1.6}     # used if no /plan was received yet
+
+    # 2) RE-ROUTE: while heading to goal 2 (through the east doorway), the doorway is closed
+    #    when the robot comes within 1.5 m of it. The planner must find the long way round
+    #    through the west doorway.
+    - name: door_east_block
+      trigger: {type: robot_near, x: 3.0, y: 0.8, radius: 1.5, during_goal: 2}
+      action: {type: spawn_box, x: 3.0, y: 1.5, yaw: 0.0, size: [1.4, 0.4, 0.8]}
+
+    # 3) HARD BLOCK: when goal 3 starts, a cage closes around the robot. Every path is
+    #    occluded -> Nav2's behaviour tree runs its recoveries (clear costmaps, spin, wait,
+    #    back up) and finally ABORTS the goal. The mission runner records the failure.
+    - name: cage
+      trigger: {type: goal_started, goal: 3}
+      action: {type: spawn_cage, inner_radius: 0.75, thickness: 0.25, size: [0.25, 0.25, 0.8]}
+
+    # 4) ...someone opens the cage once the robot has given up -> the retry succeeds.
+    - name: open_cage
+      trigger: {type: goal_finished, goal: 3, delay: 1.0}
+      action: {type: remove, names: [cage]}

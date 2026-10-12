@@ -1,0 +1,13 @@
+# Only the "unknown obstacle" test: a box on the path to EVERY goal.
+scenario:
+  name: surprise_only
+  events:
+    - name: surprise_0
+      trigger: {type: goal_started, goal: 0, delay: 3.0}
+      action: {type: spawn_on_path, distance_ahead: 1.5, size: [0.5, 0.5, 0.6]}
+    - name: surprise_1
+      trigger: {type: goal_started, goal: 1, delay: 3.0}
+      action: {type: spawn_on_path, distance_ahead: 1.5, size: [0.5, 0.5, 0.6]}
+    - name: surprise_2
+      trigger: {type: goal_started, goal: 2, delay: 3.0}
+      action: {type: spawn_on_path, distance_ahead: 1.5, size: [0.5, 0.5, 0.6]}

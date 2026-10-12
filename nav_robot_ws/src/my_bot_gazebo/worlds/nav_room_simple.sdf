@@ -1,0 +1,195 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================================
+   nav_room_simple.sdf - same 10 x 10 m room, no partition (beginner-friendly)
+  ============================================================================
+  Use it while you are getting SLAM / AMCL / Nav2 to work for the first time:
+  ros2 launch my_bot_bringup phase3_slam.launch.py world:=nav_room_simple.sdf
+
+  COORDINATES: the room centre is the world origin (0, 0). x = east, y = north.
+  The interior is exactly 10 m x 10 m: inner wall faces at x = +-5.0 and y = +-5.0.
+  The robot spawns at (0, 0, yaw 0). Because SLAM's "map" frame starts where the robot
+  starts, map coordinates == world coordinates in this project, which makes goals,
+  ground-truth comparison and debugging much simpler.
+
+  World plugins (gz-sim "systems") loaded below - each one is a feature:
+    Physics         - rigid body dynamics (ODE, 3 ms step)
+    UserCommands    - services /world/nav_room/create | remove | set_pose
+                      (used to spawn surprise obstacles and teleport the robot)
+    SceneBroadcaster- sends the scene to the GUI
+    Sensors         - renders camera / gpu_lidar sensors (ogre2)
+    Imu             - computes IMU sensor readings
+  If you add a sensor and it is silent, a missing system plugin is the usual cause.
+
+  The "lite" simulator (my_bot_autonomy lite_sim) parses THIS FILE for the boxes and
+  cylinders, so both simulators always see the same room.
+-->
+<sdf version="1.9">
+  <world name="nav_room">
+
+    <physics name="3ms" type="ode">
+      <max_step_size>0.003</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <scene>
+      <ambient>0.6 0.6 0.6 1</ambient>
+      <background>0.8 0.85 0.9 1</background>
+      <shadows>false</shadows>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.4 0.2 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>40 40</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>40 40</size></plane></geometry>
+          <material>
+            <ambient>0.85 0.85 0.8 1</ambient>
+            <diffuse>0.85 0.85 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ================= Outer walls: 0.2 m thick, 1 m high ================= -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 5.1 0.500 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10.4 0.2 1.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10.4 0.2 1.0</size></box></geometry>
+          <material><ambient>0.75 0.75 0.78 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -5.1 0.500 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10.4 0.2 1.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10.4 0.2 1.0</size></box></geometry>
+          <material><ambient>0.75 0.75 0.78 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_east">
+      <static>true</static>
+      <pose>5.1 0 0.500 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.2 10.4 1.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.2 10.4 1.0</size></box></geometry>
+          <material><ambient>0.75 0.75 0.78 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-5.1 0 0.500 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.2 10.4 1.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.2 10.4 1.0</size></box></geometry>
+          <material><ambient>0.75 0.75 0.78 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ================= A few obstacles, NO partition (easier first tests) ================= -->
+    <model name="crate_a">
+      <static>true</static>
+      <pose>-3.2 -2.6 0.300 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.0 1.0 0.6</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.0 1.0 0.6</size></box></geometry>
+          <material><ambient>0.55 0.38 0.25 1</ambient><diffuse>0.55 0.38 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="table_b">
+      <static>true</static>
+      <pose>-3.0 3.6 0.350 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.4 0.8 0.7</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.4 0.8 0.7</size></box></geometry>
+          <material><ambient>0.55 0.38 0.25 1</ambient><diffuse>0.55 0.38 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="pillar_b">
+      <static>true</static>
+      <pose>0.6 3.2 0.500 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.3</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.3</radius><length>1.0</length></cylinder></geometry>
+          <material><ambient>0.3 0.5 0.35 1</ambient><diffuse>0.3 0.5 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="shelf_b">
+      <static>true</static>
+      <pose>3.0 3.6 0.300 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.8 0.8 0.6</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.8 0.8 0.6</size></box></geometry>
+          <material><ambient>0.55 0.38 0.25 1</ambient><diffuse>0.55 0.38 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="l_wall_long">
+      <static>true</static>
+      <pose>2.6 -2.8 0.400 0 0 0.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.6 0.2 0.8</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.6 0.2 0.8</size></box></geometry>
+          <material><ambient>0.55 0.38 0.25 1</ambient><diffuse>0.55 0.38 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
